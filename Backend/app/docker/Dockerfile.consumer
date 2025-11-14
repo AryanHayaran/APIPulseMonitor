@@ -1,0 +1,17 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN apt-get update && \
+    apt-get install -y gcc librdkafka-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# Add app directory to PYTHONPATH so imports like `from app.core.config import Config` work
+ENV PYTHONPATH=/app
+
+CMD ["python", "-m", "app.services.healthConsumer"]
