@@ -59,7 +59,8 @@ function Home() {
     }
 
     fetchServices()
-  }, [isAuthenticated, authLoading, navigate, handleLogout])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, authLoading, navigate])
 
   return (
     <div className="min-h-screen bg-gray-50">

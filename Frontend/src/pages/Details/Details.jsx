@@ -45,7 +45,8 @@ function Details() {
     }
 
     fetchServiceDetails()
-  }, [id, isAuthenticated, navigate, handleLogout])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, isAuthenticated, navigate])
 
   const handleDelete = async () => {
     try {
