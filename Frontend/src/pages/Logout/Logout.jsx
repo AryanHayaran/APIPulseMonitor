@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { logout as logoutAPI } from '../../services/authService'
 import { useAuth } from '../../context/useAuth'
@@ -8,8 +8,12 @@ import 'react-toastify/dist/ReactToastify.css'
 function Logout() {
   const navigate = useNavigate()
   const { logout } = useAuth()
+  const hasLoggedOut = useRef(false)  // guard against double-firing in dev / dep changes
 
   useEffect(() => {
+    if (hasLoggedOut.current) return
+    hasLoggedOut.current = true
+
     const performLogout = async () => {
       try {
         await logoutAPI()

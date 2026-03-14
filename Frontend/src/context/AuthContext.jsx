@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect } from 'react'
+import { createContext, useState, useEffect, useCallback } from 'react'
 import { getAccessToken, removeTokens } from '../services/authService'
 
 const AuthContext = createContext(null)
@@ -14,16 +14,16 @@ export const AuthProvider = ({ children }) => {
     setLoading(false)
   }, [])
 
-  const login = () => {
+  const login = useCallback(() => {
     // Tokens have already been stored by authService.login() — just update state
     setIsAuthenticated(true)
     return Promise.resolve()
-  }
+  }, [])
 
-  const logout = () => {
+  const logout = useCallback(() => {
     removeTokens()
     setIsAuthenticated(false)
-  }
+  }, [])
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, login, logout, loading }}>

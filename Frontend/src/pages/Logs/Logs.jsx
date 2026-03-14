@@ -53,7 +53,8 @@ function Logs() {
     }
 
     fetchData()
-  }, [id, isAuthenticated, navigate, handleLogout])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, isAuthenticated, navigate])
 
   const getHealthColor = (status) =>
     status
