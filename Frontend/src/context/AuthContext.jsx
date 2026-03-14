@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect } from 'react'
-import { getAccessToken, removeAccessToken } from '../services/authService'
+import { getAccessToken, removeTokens } from '../services/authService'
 
 const AuthContext = createContext(null)
 
@@ -8,21 +8,20 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check if user is authenticated on mount
+    // Check if user is authenticated on mount by reading the stored access token
     const token = getAccessToken()
     setIsAuthenticated(!!token)
     setLoading(false)
   }, [])
 
   const login = () => {
-    // For cookie-based auth, we trust that the login API succeeded
-    // Cookies are HttpOnly and sent automatically, so we can't read them
+    // Tokens have already been stored by authService.login() — just update state
     setIsAuthenticated(true)
     return Promise.resolve()
   }
 
   const logout = () => {
-    removeAccessToken()
+    removeTokens()
     setIsAuthenticated(false)
   }
 

@@ -1,44 +1,79 @@
 import { API_BASE_URL, API_ENDPOINTS } from '../config/api'
 
-// Get access token - for cookie-based auth
+// ─── Token Storage ────────────────────────────────────────────────────────────
+
+export const setTokens = (accessToken, refreshToken) => {
+  localStorage.setItem('access_token', accessToken)
+  if (refreshToken) {
+    localStorage.setItem('refresh_token', refreshToken)
+  }
+}
+
 export const getAccessToken = () => {
-  // For HttpOnly cookie-based auth, we can't read the cookie from JavaScript
-  // The cookie is automatically sent by the browser with credentials: 'include'
-  // We check localStorage for a login flag set after successful login
-  return localStorage.getItem('isLoggedIn') || null
+  return localStorage.getItem('access_token')
 }
 
-// Set login flag
-export const setLoginFlag = () => {
-  localStorage.setItem('isLoggedIn', 'true')
+export const getRefreshToken = () => {
+  return localStorage.getItem('refresh_token')
 }
 
-// Remove access token - clear login flag
-export const removeAccessToken = () => {
-  // Clear login flag - cookies are cleared by the backend on logout
-  localStorage.removeItem('isLoggedIn')
+export const removeTokens = () => {
+  localStorage.removeItem('access_token')
+  localStorage.removeItem('refresh_token')
 }
 
-// Login API call
+// ─── Refresh Token ────────────────────────────────────────────────────────────
+
+export const refreshAccessToken = async () => {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) {
+    throw new Error('No refresh token available')
+  }
+
+  const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.REFRESH}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${getAccessToken()}`,
+    },
+    body: JSON.stringify({
+      refresh_token: `Bearer ${refreshToken}`,
+    }),
+  })
+
+  const contentType = response.headers.get('content-type')
+  let data
+  if (contentType && contentType.includes('application/json')) {
+    data = await response.json()
+  } else {
+    const text = await response.text()
+    throw new Error(text || `Token refresh failed: ${response.status}`)
+  }
+
+  if (!response.ok) {
+    throw new Error(data.message || data.error || 'Token refresh failed')
+  }
+
+  // Store the new access token
+  const newAccessToken = data.data.access_token
+  setTokens(newAccessToken, null) // refresh_token stays the same
+  return newAccessToken
+}
+
+// ─── Login ────────────────────────────────────────────────────────────────────
+
 export const login = async (email, password) => {
   try {
     const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.LOGIN}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true', // Required for ngrok
       },
-      credentials: 'include', // Important for cookies
-      body: JSON.stringify({
-        email,
-        password,
-      }),
+      body: JSON.stringify({ email, password }),
     })
 
-    // Check if response is ok before parsing JSON
     let data
     const contentType = response.headers.get('content-type')
-    
     if (contentType && contentType.includes('application/json')) {
       data = await response.json()
     } else {
@@ -50,45 +85,33 @@ export const login = async (email, password) => {
       throw new Error(data.message || data.error || `Login failed: ${response.status} ${response.statusText}`)
     }
 
-    // Cookie is automatically set by the backend via Set-Cookie header
-    // Set a login flag in localStorage so we know user is authenticated
-    setLoginFlag()
+    // Store both tokens
+    const { access_token, refresh_token } = data.data
+    setTokens(access_token, refresh_token)
 
     return data
   } catch (error) {
-    // Handle network errors
-    if (error instanceof TypeError) {
-      if (error.message.includes('fetch')) {
-        throw new Error(`Network error: Unable to connect to the server at ${API_BASE_URL}. Please check if the API server is running.`)
-      }
-      throw new Error(`Network error: ${error.message}`)
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error(`Network error: Unable to connect to the server at ${API_BASE_URL}. Please check if the API server is running.`)
     }
-    // Re-throw other errors
     throw error
   }
 }
 
-// Signup API call
+// ─── Signup ───────────────────────────────────────────────────────────────────
+
 export const signup = async (full_name, email, password) => {
   try {
     const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.SIGNUP}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true', // Required for ngrok
       },
-      credentials: 'include',
-      body: JSON.stringify({
-        full_name,
-        email,
-        password,
-      }),
+      body: JSON.stringify({ full_name, email, password }),
     })
 
-    // Check if response is ok before parsing JSON
     let data
     const contentType = response.headers.get('content-type')
-    
     if (contentType && contentType.includes('application/json')) {
       data = await response.json()
     } else {
@@ -100,38 +123,34 @@ export const signup = async (full_name, email, password) => {
       throw new Error(data.message || data.error || `Signup failed: ${response.status} ${response.statusText}`)
     }
 
-    // Cookie is automatically set by the backend via Set-Cookie header
-    // Set a login flag in localStorage so we know user is authenticated
-    setLoginFlag()
+    // Store both tokens
+    const { access_token, refresh_token } = data.data
+    setTokens(access_token, refresh_token)
 
     return data
   } catch (error) {
-    // Handle network errors
-    if (error instanceof TypeError) {
-      if (error.message.includes('fetch')) {
-        throw new Error(`Network error: Unable to connect to the server at ${API_BASE_URL}. Please check if the API server is running.`)
-      }
-      throw new Error(`Network error: ${error.message}`)
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error(`Network error: Unable to connect to the server at ${API_BASE_URL}. Please check if the API server is running.`)
     }
-    // Re-throw other errors
     throw error
   }
 }
 
-// Logout API call
+// ─── Logout ───────────────────────────────────────────────────────────────────
+
 export const logout = async () => {
   try {
+    const accessToken = getAccessToken()
     const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.LOGOUT}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true', // Required for ngrok
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
-      credentials: 'include', // Cookies are sent automatically with credentials: 'include'
     })
 
-    // Remove token regardless of response
-    removeAccessToken()
+    // Always clear tokens on logout regardless of response
+    removeTokens()
 
     if (!response.ok) {
       let errorMessage = `Logout failed: ${response.status} ${response.statusText}`
@@ -147,21 +166,17 @@ export const logout = async () => {
       throw new Error(errorMessage)
     }
 
-    // Try to parse response if it's JSON
     const contentType = response.headers.get('content-type')
     if (contentType && contentType.includes('application/json')) {
       return await response.json()
     }
-    
+
     return { success: true }
   } catch (error) {
-    // Even if API call fails, remove token locally
-    removeAccessToken()
-    if (error instanceof TypeError) {
-      if (error.message.includes('fetch')) {
-        throw new Error(`Network error: Unable to connect to the server at ${API_BASE_URL}. Please check if the API server is running.`)
-      }
-      throw new Error(`Network error: ${error.message}`)
+    // Always remove tokens even if API call fails
+    removeTokens()
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error(`Network error: Unable to connect to the server at ${API_BASE_URL}. Please check if the API server is running.`)
     }
     throw error
   }
